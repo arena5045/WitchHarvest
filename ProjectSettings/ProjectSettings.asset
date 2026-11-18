@@ -673,7 +673,25 @@ PlayerSettings:
   webGLCloseOnQuit: 0
   webWasm2023: 0
   webEnableSubmoduleStrippingCompatibility: 0
-  scriptingDefineSymbols: {}
+  scriptingDefineSymbols:
+    Android: DOTWEEN;DOTWEENPRO
+    EmbeddedLinux: DOTWEEN;DOTWEENPRO
+    GameCoreScarlett: DOTWEEN;DOTWEENPRO
+    GameCoreXboxOne: DOTWEEN;DOTWEENPRO
+    Kepler: DOTWEEN;DOTWEENPRO
+    LinuxHeadlessSimulation: DOTWEEN;DOTWEENPRO
+    Nintendo Switch: DOTWEEN;DOTWEENPRO
+    Nintendo Switch 2: DOTWEEN;DOTWEENPRO
+    PS4: DOTWEEN;DOTWEENPRO
+    PS5: DOTWEEN;DOTWEENPRO
+    QNX: DOTWEEN;DOTWEENPRO
+    Standalone: ODIN_INSPECTOR;ODIN_INSPECTOR_3;ODIN_INSPECTOR_3_1;ODIN_INSPECTOR_3_2;ODIN_INSPECTOR_3_3;DOTWEEN;DOTWEENPRO
+    VisionOS: DOTWEEN;DOTWEENPRO
+    WebGL: DOTWEEN;DOTWEENPRO
+    Windows Store Apps: DOTWEEN;DOTWEENPRO
+    XboxOne: DOTWEEN;DOTWEENPRO
+    iPhone: DOTWEEN;DOTWEENPRO
+    tvOS: DOTWEEN;DOTWEENPRO
   additionalCompilerArguments: {}
   platformArchitecture: {}
   scriptingBackend:
@@ -773,11 +791,11 @@ PlayerSettings:
   activeInputHandler: 1
   windowsGamepadBackendHint: 0
   enableDirectStorage: 0
-  cloudProjectId: 
+  cloudProjectId: 78228c88-181b-4b5e-83eb-d6e5a06a18db
   framebufferDepthMemorylessMode: 0
   qualitySettingsNames: []
-  projectName: 
-  organizationId: 
+  projectName: WitchHarvest
+  organizationId: arena5045
   cloudEnabled: 0
   legacyClampBlendShapeWeights: 0
   hmiLoadingImage: {fileID: 0}
