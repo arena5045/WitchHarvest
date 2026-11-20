@@ -9,29 +9,39 @@ public class CropHealth : MonoBehaviour
     private int currentHealth;
     private bool isHarvested;
 
+    private FarmCell farmCell;
+    private CropVisual cropVisual;
+
     private void Awake()
     {
         if (cropData == null)
         {
-            Debug.LogError($"{name}: CropData가 설정되지 않았습니다.", this);
+            Debug.LogError($"{name}: CropData가 없습니다.", this);
             enabled = false;
             return;
         }
 
-        // SO는 원본 데이터이므로 수정하지 않고, 현재 HP만 개별 관리한다.
+        // SO의 최대 HP를 이용해 작물마다 현재 HP를 초기화한다.
         currentHealth = cropData.MaxHealth;
+        cropVisual = GetComponentInChildren<CropVisual>();
 
-        // 스프라이트가 지정되어 있다면 해당 작물 이미지로 교체한다.
-        if (cropData.Sprite != null &&
-            TryGetComponent(out SpriteRenderer renderer))
+        if (cropData.Sprite != null)
         {
-            renderer.sprite = cropData.Sprite;
+            SpriteRenderer renderer =
+                GetComponentInChildren<SpriteRenderer>();
+
+            if (renderer != null)
+                renderer.sprite = cropData.Sprite;
         }
+    }
+
+    public void SetFarmCell(FarmCell cell)
+    {
+        farmCell = cell;
     }
 
     public void TakeDamage(int damage)
     {
-        // Destroy는 프레임 끝에 처리되므로 중복 수확을 별도로 방지한다.
         if (!enabled || isHarvested || damage <= 0)
             return;
 
@@ -40,24 +50,39 @@ public class CropHealth : MonoBehaviour
         Debug.Log($"{name} HP: {currentHealth}");
 
         if (currentHealth <= 0)
+        {
             Harvest();
+        }
+        else
+        {
+            cropVisual?.PlayHit();
+        }
     }
 
     private void Harvest()
     {
         isHarvested = true;
 
-        // 개별 작물은 수확 사실만 전달하고, 기록은 매니저가 담당한다.
+        // 수확이 확정되는 순간 밭을 논리적으로 빈칸 처리한다.
+        // 실제 그래픽은 수확 애니메이션 동안 잠시 남아 있을 수 있다.
+        farmCell?.ClearCrop(this);
+
         if (HarvestManager.Instance != null)
         {
             HarvestManager.Instance.RegisterHarvest(cropData);
         }
+
+        // 애니메이션 중 중복 공격을 방지한다.
+        if (TryGetComponent(out Collider2D hitCollider))
+            hitCollider.enabled = false;
+
+        if (cropVisual != null)
+        {
+            cropVisual.PlayHarvest(() => Destroy(gameObject));
+        }
         else
         {
-            Debug.LogError("HarvestManager를 찾을 수 없습니다.");
+            Destroy(gameObject);
         }
-
-        Debug.Log($"{name} harvested!");
-        Destroy(gameObject);
     }
 }

@@ -7,6 +7,7 @@ public class HarvestAttack : MonoBehaviour
     [SerializeField, Min(0.1f)] private float attackSpeed = 1f;
     [SerializeField, Min(1)] private int damage = 1;
 
+
     private float attackTimer;
 
     // 실제 공격 타이머를 시각 효과에서도 사용한다.
@@ -14,22 +15,36 @@ public class HarvestAttack : MonoBehaviour
     public float AttackProgress =>
         Mathf.Clamp01(attackTimer * attackSpeed);
 
+    private DayManager dayManager;
+
+    private void Start()
+    {
+        // 씬에 배치된 활성 DayManager가 Awake에서 Instance를 등록한 뒤 가져온다.
+        dayManager = DayManager.Instance;
+    }
     private void Update()
     {
+
+        // 수확 시간이 아니면 공격과 충전을 모두 중단한다.
+        if (dayManager == null || !dayManager.IsHarvesting)
+        {
+            attackTimer = 0f;
+            return;
+        }
+
         attackTimer += Time.deltaTime;
 
-        // 공격속도는 초당 공격 횟수를 의미한다.
-        // 예: 2라면 0.5초마다 공격한다.
         float interval = 1f / attackSpeed;
 
         if (attackTimer < interval)
             return;
 
-        // 남은 시간을 보존해 프레임 오차 누적을 줄인다.
+        // 기존처럼 남은 시간을 보존한다.
         attackTimer -= interval;
 
         Attack();
     }
+
 
     private void Attack()
     {
