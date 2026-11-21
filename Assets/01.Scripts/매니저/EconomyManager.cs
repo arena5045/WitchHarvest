@@ -60,17 +60,28 @@ public class EconomyManager : MonoBehaviour
 
     public bool TrySpendGold(long cost)
     {
-        // 음수 비용으로 골드가 늘거나, 잔액보다 많이 소비되는 것을 막는다.
+        if (!TrySpendGoldWithoutNotification(cost))
+            return false;
+
+        if (cost > 0)
+            NotifyGoldChanged();
+
+        return true;
+    }
+
+    // 노드 구매에서 골드와 구매 레벨을 함께 확정한 뒤 알리기 위한 내부 처리다.
+    internal bool TrySpendGoldWithoutNotification(long cost)
+    {
         if (cost < 0 || Gold < cost)
             return false;
 
-        // 무료 구매는 성공하되 잔액이 바뀌지 않았으므로 변경 이벤트도 생략한다.
-        if (cost == 0)
-            return true;
-
         Gold -= cost;
-        GoldChanged?.Invoke();
         return true;
+    }
+
+    internal void NotifyGoldChanged()
+    {
+        GoldChanged?.Invoke();
     }
 
     private void OnDestroy()
