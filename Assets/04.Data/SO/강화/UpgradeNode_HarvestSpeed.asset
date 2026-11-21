@@ -12,14 +12,27 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 718e36211ba2a13439c854f776c0b702, type: 3}
   m_Name: UpgradeNode_HarvestSpeed
   m_EditorClassIdentifier: Assembly-CSharp::UpgradeNodeData
-  nodeId: 
-  displayName: 
-  description: 
-  icon: {fileID: 0}
-  requirements: []
+  nodeId: harvest_speed_01
+  displayName: UpgradeNode_HarvestSpeed
+  description: "\uC218\uD655 \uB9C8\uBC95\uC758 \uCE90\uC2A4\uD305 \uC18D\uB3C4\uB97C
+    \uB192\uC785\uB2C8\uB2E4."
+  icon: {fileID: 10907, guid: 0000000000000000f000000000000000, type: 0}
+  requirements:
+  - node: {fileID: 11400000, guid: 10c07786bbe91084892ccb7c70eaa785, type: 2}
+    requiredLevel: 1
   levels:
   - cost: 10
     effects:
-    - type: 0
+    - type: 1
       farmSize: {x: 2, y: 2}
-      percentBonus: 0
+      percentBonus: 10
+  - cost: 20
+    effects:
+    - type: 1
+      farmSize: {x: 2, y: 2}
+      percentBonus: 20
+  - cost: 40
+    effects:
+    - type: 1
+      farmSize: {x: 2, y: 2}
+      percentBonus: 30

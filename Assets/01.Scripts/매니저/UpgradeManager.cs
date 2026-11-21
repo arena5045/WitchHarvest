@@ -13,6 +13,10 @@ public class UpgradeManager : MonoBehaviour
     [SerializeField, DisableInPlayMode]
     private UpgradeNodeData[] nodes = Array.Empty<UpgradeNodeData>();
 
+    [Header("효과 적용 대상")]
+    [SerializeField] private FarmManager farmManager;
+
+
     // SO는 설정만 보관한다. 현재 구매 레벨은 이곳에 따로 기록한다.
     private readonly Dictionary<UpgradeNodeData, int> levels =
         new Dictionary<UpgradeNodeData, int>();
@@ -55,9 +59,12 @@ public class UpgradeManager : MonoBehaviour
         economyManager = EconomyManager.Instance;
         dayManager = DayManager.Instance;
 
-        if (economyManager == null || dayManager == null)
+        if (economyManager == null || dayManager == null || farmManager == null)
         {
-            Debug.LogError("UpgradeManager의 Economy / Day Manager를 확인해주세요.", this);
+            Debug.LogError(
+                "UpgradeManager의 Economy / Day / Farm Manager를 확인해주세요.",
+                this);
+
             enabled = false;
             return;
         }
@@ -119,11 +126,25 @@ public class UpgradeManager : MonoBehaviour
             if (!node.TryGetLevelData(nextLevel, out UpgradeLevelData levelData))
                 return false;
 
+            // 농장 준비가 안 됐다면 돈과 구매 레벨을 변경하지 않는다.
+            if (farmManager == null || !farmManager.CanExpand)
+            {
+                Debug.LogError("농장이 아직 준비되지 않아 노드를 구매할 수 없습니다.", this);
+                return false;
+            }
+
+            // 구매 후 필요한 크기를 계산만 한다. 실제 상태는 아직 바꾸지 않는다.
+            Vector2Int targetFarmSize = CalculateFarmSizeAfterPurchase(node, nextLevel);
+
+
             // 아직 알리지 않는다. 골드와 구매 레벨을 모두 확정한 뒤 알린다.
             if (!economyManager.TrySpendGoldWithoutNotification(levelData.Cost))
                 return false;
 
             levels[node] = nextLevel;
+
+            // UI에 구매 결과를 알리기 전에 실제 농장에도 효과를 적용한다.
+            farmManager.ExpandTo(targetFarmSize);
 
             if (levelData.Cost > 0)
                 economyManager.NotifyGoldChanged();
@@ -163,6 +184,22 @@ public class UpgradeManager : MonoBehaviour
                 if (!node.TryGetLevelData(level, out UpgradeLevelData data) ||
                     data.Cost < 0)
                     return DataError($"{node.name}: {level}레벨의 데이터 또는 가격이 잘못되었습니다.");
+
+                if (data.Effects == null || data.Effects.Count == 0)
+                    return DataError($"{node.name}: {level}레벨에 효과가 없습니다.");
+
+                foreach (UpgradeEffectData effect in data.Effects)
+                {
+                    if (effect == null)
+                        return DataError($"{node.name}: {level}레벨에 비어 있는 효과가 있습니다.");
+
+                    if (effect.Type == UpgradeEffectType.FarmSize &&
+                        (effect.FarmSize.x < 1 || effect.FarmSize.y < 1))
+                    {
+                        return DataError(
+                            $"{node.name}: {level}레벨의 농장 크기는 가로·세로 모두 1 이상이어야 합니다.");
+                    }
+                }
             }
         }
 
@@ -191,6 +228,43 @@ public class UpgradeManager : MonoBehaviour
 
         return true;
     }
+
+    private Vector2Int CalculateFarmSizeAfterPurchase(
+    UpgradeNodeData purchasingNode,
+    int nextLevel)
+    {
+        Vector2Int targetSize = Vector2Int.one;
+
+        foreach (UpgradeNodeData node in nodes)
+        {
+            // 구매할 노드만 다음 레벨로 계산한다.
+            // 아직 실제 구매 기록을 변경하는 것은 아니다.
+            int level = node == purchasingNode
+                ? nextLevel
+                : GetLevel(node);
+
+            if (level == 0)
+                continue;
+
+            // 레벨 데이터와 효과 목록은 Awake의 ValidateNodes에서 검사했다.
+            node.TryGetLevelData(level, out UpgradeLevelData data);
+
+            foreach (UpgradeEffectData effect in data.Effects)
+            {
+                // 이번 단계에서는 농장 크기 효과만 연결한다.
+                if (effect.Type != UpgradeEffectType.FarmSize)
+                    continue;
+
+                // 각 노드의 현재 레벨 효과만 사용한다.
+                // 농장 크기는 합산하지 않고 가로·세로의 가장 큰 목표값을 사용한다.
+                targetSize.x = Mathf.Max(targetSize.x, effect.FarmSize.x);
+                targetSize.y = Mathf.Max(targetSize.y, effect.FarmSize.y);
+            }
+        }
+
+        return targetSize;
+    }
+
 
     private bool HasCycle(
         UpgradeNodeData node,
