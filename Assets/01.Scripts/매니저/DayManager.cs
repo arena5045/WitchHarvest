@@ -171,6 +171,26 @@ public class DayManager : MonoBehaviour
         BeginCountdown();
     }
 
+    // 이미 낮 수확을 완료한 날짜의 밤으로 복귀한다.
+    // SaveManager의 초기 로드에서만 사용한다.
+    internal void RestoreCompletedDay(int savedDay)
+    {
+        DayNumber = savedDay;
+
+        // 이 날짜의 판매금은 이미 지급된 상태다.
+        harvestRewardGranted = true;
+
+        EarnedGoldToday = 0;
+        countdownRemaining = 0f;
+        harvestEndTime = 0f;
+
+        // 최초 시작 시 생성된 작물은 제거하고 밭은 유지한다.
+        farmManager.ClearAllCrops();
+
+        // 날짜와 실제 게임 상태가 확정된 다음 UI에 알린다.
+        SetState(DayState.Settlement);
+    }
+
     private void SetState(DayState state)
     {
         if (CurrentState == state)

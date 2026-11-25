@@ -84,6 +84,14 @@ public class EconomyManager : MonoBehaviour
         GoldChanged?.Invoke();
     }
 
+    // 로드 시 저장된 잔액으로 교체한다.
+    // 신규 골드 획득이나 판매금 지급으로 취급하지 않는다.
+    internal void RestoreGoldWithoutNotification(long savedGold)
+    {
+        Gold = savedGold;
+    }
+
+
     private void OnDestroy()
     {
         if (Instance == this)

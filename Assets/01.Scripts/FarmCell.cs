@@ -55,6 +55,26 @@ public class FarmCell : MonoBehaviour
     }
 
 
+    // 작물만 정리한다. 수확이나 판매로 처리하지 않는다.
+    public void ClearCrops()
+    {
+        if (cropRoot == null)
+        {
+            Debug.LogError($"{name}: CropRoot가 설정되지 않았습니다.", this);
+            return;
+        }
+
+        for (int i = cropRoot.childCount - 1; i >= 0; i--)
+        {
+            GameObject oldCrop = cropRoot.GetChild(i).gameObject;
+
+            oldCrop.SetActive(false);
+            Destroy(oldCrop);
+        }
+
+        currentCrop = null;
+    }
+
     public void PrepareForNewDay(CropHealth cropPrefab)
     {
         if (cropRoot == null || cropPrefab == null)
@@ -63,24 +83,9 @@ public class FarmCell : MonoBehaviour
             return;
         }
 
-        // 이전 날의 작물을 모두 정리한다.
-        // 수확 애니메이션이 진행 중인 작물도 포함한다.
-        for (int i = cropRoot.childCount - 1; i >= 0; i--)
-        {
-            GameObject oldCrop = cropRoot.GetChild(i).gameObject;
+        ClearCrops();
 
-            // Destroy는 프레임 끝에 처리되므로 먼저 비활성화한다.
-            // 이전 작물이 화면에 남거나 공격받는 것을 방지한다.
-            oldCrop.SetActive(false);
-            Destroy(oldCrop);
-        }
-
-        // 기존 작물과의 연결을 해제한다.
-        currentCrop = null;
-
-        // 새로운 작물을 최대 HP 상태로 생성한다.
-        // 성장 대기 없이 바로 수확 가능한 상태다.
+        // 새로운 하루에는 수확 가능한 작물을 준비한다.
         Plant(cropPrefab);
     }
-
 }

@@ -45,6 +45,15 @@ public sealed class DialogueLine
     menuName = "Witch Harvest/Dialogue/Dialogue")]
 public sealed class DialogueData : ScriptableObject
 {
+    [Header("회고록 정보")]
+    [Tooltip("대화마다 다른 고유 ID. 저장 파일에서 사용합니다.")]
+    [SerializeField] private string dialogueId;
+
+    [SerializeField] private string memoirTitle;
+
+    public string DialogueId => dialogueId;
+    public string MemoirTitle => memoirTitle;
+
     [SerializeField]
     private DialogueLine[] lines =
         { new DialogueLine() };

@@ -116,7 +116,18 @@ public class FarmManager : MonoBehaviour
         // 다음 날의 PrepareForNewDay()가 확장된 모든 칸에 작물을 준비한다.
     }
 
+    // 저장된 밤 상태로 복귀할 때 사용한다.
+    // 농장 칸은 보존하고 작물만 제거한다.
+    public void ClearAllCrops()
+    {
+        if (cells == null)
+            return;
 
+        foreach (FarmCell cell in cells)
+        {
+            cell.ClearCrops();
+        }
+    }
 
     [ContextMenu("Test/Prepare New Day")]
     public void PrepareForNewDay()

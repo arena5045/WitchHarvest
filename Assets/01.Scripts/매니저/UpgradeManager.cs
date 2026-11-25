@@ -16,6 +16,8 @@ public class UpgradeManager : MonoBehaviour
     [Header("효과 적용 대상")]
     [SerializeField] private FarmManager farmManager;
 
+    [SerializeField] private HarvestAttack harvestAttack;
+
 
     // SO는 설정만 보관한다. 현재 구매 레벨은 이곳에 따로 기록한다.
     private readonly Dictionary<UpgradeNodeData, int> levels =
@@ -59,10 +61,11 @@ public class UpgradeManager : MonoBehaviour
         economyManager = EconomyManager.Instance;
         dayManager = DayManager.Instance;
 
-        if (economyManager == null || dayManager == null || farmManager == null)
+        if (economyManager == null || dayManager == null ||
+     farmManager == null || harvestAttack == null)
         {
             Debug.LogError(
-                "UpgradeManager의 Economy / Day / Farm Manager를 확인해주세요.",
+                "UpgradeManager의 Economy / Day / Farm Manager / harvestAttack를 확인해주세요.",
                 this);
 
             enabled = false;
@@ -133,8 +136,8 @@ public class UpgradeManager : MonoBehaviour
                 return false;
             }
 
-            // 구매 후 필요한 크기를 계산만 한다. 실제 상태는 아직 바꾸지 않는다.
-            Vector2Int targetFarmSize = CalculateFarmSizeAfterPurchase(node, nextLevel);
+            // 골드를 차감하기 전에 구매 후 효과를 계산해 둔다.
+            UpgradeStats targetStats = CalculateStats(node, nextLevel);
 
 
             // 아직 알리지 않는다. 골드와 구매 레벨을 모두 확정한 뒤 알린다.
@@ -143,8 +146,8 @@ public class UpgradeManager : MonoBehaviour
 
             levels[node] = nextLevel;
 
-            // UI에 구매 결과를 알리기 전에 실제 농장에도 효과를 적용한다.
-            farmManager.ExpandTo(targetFarmSize);
+            // 구매 기록이 확정된 뒤 실제 시스템에 효과를 적용한다.
+            ApplyStats(targetStats);
 
             if (levelData.Cost > 0)
                 economyManager.NotifyGoldChanged();
@@ -229,40 +232,159 @@ public class UpgradeManager : MonoBehaviour
         return true;
     }
 
-    private Vector2Int CalculateFarmSizeAfterPurchase(
-    UpgradeNodeData purchasingNode,
-    int nextLevel)
+    // 현재 구매 레벨에서 계산한 강화 결과를 조회한다.
+    public UpgradeStats GetCurrentStats()
     {
-        Vector2Int targetSize = Vector2Int.one;
+        return CalculateStats();
+    }
+
+    // 실제 보유 레벨 또는 구매 직후 예상 레벨을 기준으로 효과를 집계한다.
+    private UpgradeStats CalculateStats(
+        UpgradeNodeData purchasingNode = null,
+        int purchasingLevel = 0)
+    {
+        Vector2Int farmSize = Vector2Int.one;
+        float speedBonus = 0f;
 
         foreach (UpgradeNodeData node in nodes)
         {
-            // 구매할 노드만 다음 레벨로 계산한다.
-            // 아직 실제 구매 기록을 변경하는 것은 아니다.
+            // 구매 예정 노드만 다음 레벨로 계산한다.
             int level = node == purchasingNode
-                ? nextLevel
+                ? purchasingLevel
                 : GetLevel(node);
 
             if (level == 0)
                 continue;
 
-            // 레벨 데이터와 효과 목록은 Awake의 ValidateNodes에서 검사했다.
-            node.TryGetLevelData(level, out UpgradeLevelData data);
+            node.TryGetLevelData(level, out UpgradeLevelData levelData);
 
-            foreach (UpgradeEffectData effect in data.Effects)
+            foreach (UpgradeEffectData effect in levelData.Effects)
             {
-                // 이번 단계에서는 농장 크기 효과만 연결한다.
-                if (effect.Type != UpgradeEffectType.FarmSize)
-                    continue;
+                switch (effect.Type)
+                {
+                    case UpgradeEffectType.FarmSize:
+                        // 농장 크기는 가장 큰 목표 크기를 선택한다.
+                        farmSize.x = Mathf.Max(farmSize.x, effect.FarmSize.x);
+                        farmSize.y = Mathf.Max(farmSize.y, effect.FarmSize.y);
+                        break;
 
-                // 각 노드의 현재 레벨 효과만 사용한다.
-                // 농장 크기는 합산하지 않고 가로·세로의 가장 큰 목표값을 사용한다.
-                targetSize.x = Mathf.Max(targetSize.x, effect.FarmSize.x);
-                targetSize.y = Mathf.Max(targetSize.y, effect.FarmSize.y);
+                    case UpgradeEffectType.AttackSpeedPercent:
+                        // 서로 다른 노드의 현재 레벨 보너스를 합산한다.
+                        speedBonus += effect.PercentBonus;
+                        break;
+                }
             }
         }
 
-        return targetSize;
+        return new UpgradeStats(farmSize, speedBonus);
+    }
+
+    // 계산된 효과를 실제 게임 시스템에 전달한다.
+    private void ApplyStats(UpgradeStats stats)
+    {
+        farmManager.ExpandTo(stats.FarmSize);
+        harvestAttack.SetAttackSpeedBonusPercent(
+            stats.AttackSpeedBonusPercent);
+    }
+
+    // 현재 구매한 노드만 저장 데이터로 변환한다.
+    public List<UpgradeLevelSaveData> CaptureLevels()
+    {
+        var result = new List<UpgradeLevelSaveData>();
+
+        foreach (UpgradeNodeData node in nodes)
+        {
+            int level = GetLevel(node);
+
+            if (level == 0)
+                continue;
+
+            result.Add(new UpgradeLevelSaveData
+            {
+                nodeId = node.NodeId,
+                level = level
+            });
+        }
+
+        return result;
+    }
+
+    // 최초 게임 로드 전용.
+    // 골드를 차감하거나 구매 함수를 다시 실행하지 않는다.
+    internal bool TryRestoreLevels(
+        IReadOnlyList<UpgradeLevelSaveData> savedLevels)
+    {
+        if (!IsInitialized || !isActiveAndEnabled ||
+            purchaseInProgress ||
+            dayManager == null ||
+            dayManager.CurrentState != DayState.Ready ||
+            farmManager == null || !farmManager.CanExpand ||
+            harvestAttack == null ||
+            savedLevels == null)
+        {
+            return false;
+        }
+
+        var nodesById =
+            new Dictionary<string, UpgradeNodeData>(StringComparer.Ordinal);
+
+        var restoredLevels =
+            new Dictionary<UpgradeNodeData, int>();
+
+        foreach (UpgradeNodeData node in nodes)
+        {
+            nodesById.Add(node.NodeId, node);
+            restoredLevels.Add(node, 0);
+        }
+
+        // 실제 구매 기록을 변경하기 전에 저장값을 모두 검사한다.
+        foreach (UpgradeLevelSaveData saved in savedLevels)
+        {
+            if (saved == null ||
+                string.IsNullOrWhiteSpace(saved.nodeId) ||
+                !nodesById.TryGetValue(saved.nodeId, out UpgradeNodeData node) ||
+                saved.level < 1 ||
+                saved.level > node.MaxLevel ||
+                restoredLevels[node] != 0)
+            {
+                Debug.LogError("저장된 노드 ID 또는 레벨이 올바르지 않습니다.", this);
+                return false;
+            }
+
+            restoredLevels[node] = saved.level;
+        }
+
+        // 저장된 구매 레벨들이 선행 조건을 만족하는지도 확인한다.
+        foreach (var entry in restoredLevels)
+        {
+            if (entry.Value == 0)
+                continue;
+
+            foreach (UpgradeRequirement requirement in entry.Key.Requirements)
+            {
+                if (restoredLevels[requirement.Node] < requirement.RequiredLevel)
+                {
+                    Debug.LogError(
+                        $"저장된 노드의 선행 조건 오류: {entry.Key.NodeId}",
+                        this);
+
+                    return false;
+                }
+            }
+        }
+
+        // 검사가 모두 끝난 뒤 실제 구매 기록을 복원한다.
+        foreach (var entry in restoredLevels)
+            levels[entry.Key] = entry.Value;
+
+        ApplyStats(CalculateStats());
+
+        return true;
+    }
+
+    internal void NotifyUpgradesChanged()
+    {
+        UpgradesChanged?.Invoke();
     }
 
 

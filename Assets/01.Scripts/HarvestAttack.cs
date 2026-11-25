@@ -7,13 +7,20 @@ public class HarvestAttack : MonoBehaviour
     [SerializeField, Min(0.1f)] private float attackSpeed = 1f;
     [SerializeField, Min(1)] private int damage = 1;
 
+    // 노드 강화로 얻은 보너스. 기본 공격속도와 분리해서 관리한다.
+    private float attackSpeedBonusPercent;
+
+    // 실제 공격에 사용하는 초당 공격 횟수.
+    public float CurrentAttackSpeed =>
+        attackSpeed * (1f + attackSpeedBonusPercent / 100f);
+
 
     private float attackTimer;
 
     // 실제 공격 타이머를 시각 효과에서도 사용한다.
     // 0 = 충전 시작, 1 = 공격 직전
     public float AttackProgress =>
-        Mathf.Clamp01(attackTimer * attackSpeed);
+        Mathf.Clamp01(attackTimer * CurrentAttackSpeed);
 
     private DayManager dayManager;
 
@@ -34,7 +41,7 @@ public class HarvestAttack : MonoBehaviour
 
         attackTimer += Time.deltaTime;
 
-        float interval = 1f / attackSpeed;
+        float interval = 1f / CurrentAttackSpeed;
 
         if (attackTimer < interval)
             return;
@@ -44,7 +51,10 @@ public class HarvestAttack : MonoBehaviour
 
         Attack();
     }
-
+    public void SetAttackSpeedBonusPercent(float percent)
+    {
+        attackSpeedBonusPercent = Mathf.Max(0f, percent);
+    }
 
     private void Attack()
     {

@@ -1,5 +1,6 @@
 using DG.Tweening;
 using Sirenix.OdinInspector;
+using System;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -19,6 +20,10 @@ public class DialoguePlayer : MonoBehaviour
     [SerializeField] private CanvasGroup lobbyGroup;
 
     public bool IsPlaying { get; private set; }
+
+    // 대화가 정상적으로 시작되었을 때만 발생한다.
+    public event Action<DialogueData> DialogueStarted;
+
 
     private DayManager dayManager;
     private DialogueData currentDialogue;
@@ -130,6 +135,10 @@ public class DialoguePlayer : MonoBehaviour
 
         ShowCurrentLine();
         nextButton.Select();
+
+        // 재생에 성공한 대화를 회고록 시스템에 알린다.
+        DialogueStarted?.Invoke(dialogue);
+
         return true;
     }
 
